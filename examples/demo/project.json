@@ -1,0 +1,6 @@
+{
+  "title": "LYRICREEL",
+  "artist": "demo song · original",
+  "audio": "song.mp3",
+  "whisper": { "model": "small", "language": "en", "refine": [] }
+}
