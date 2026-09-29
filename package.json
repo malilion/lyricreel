@@ -1,0 +1,10 @@
+{
+  "name": "lyricreel",
+  "version": "0.1.0",
+  "description": "Turn a song + lyrics into a procedural, beat-synced lyric music video. Every frame is drawn in code.",
+  "license": "MIT",
+  "bin": { "lyricreel": "bin/lyricreel.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "puppeteer-core": "^24.0.0" },
+  "keywords": ["music-video", "lyric-video", "canvas", "whisper", "generative", "claude-code"]
+}

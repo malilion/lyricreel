@@ -1,0 +1,16 @@
+# section | scene[:arg] | lyric (ad-libs in parentheses) | @start (optional)
+# 這首示範曲沒有人聲，所以每句都用 @ 釘住時間（有人聲的歌通常只需要釘少數幾句）
+intro   | title             | Hey, it's lyricreel                      | @1.0
+verse1  | eye               | I see the beat before it drops           | @4.0
+verse1  | vinyl             | Spin the record one more time (one more) | @6.0
+pre1    | stopwatch:HOLD ON | Hold on, wait for it                     | @8.0
+pre1    | heartlock         | Now I let the rhythm in                  | @10.0
+chorus1 | sun               | Shining like a summer song (so bright)   | @12.0
+chorus1 | lemonade          | Sweet as lemonade                        | @14.0
+chorus1 | roadchase         | Catch me if you can                      | @16.0
+chorus1 | kisses            | Seal it with a kiss                      | @18.0
+post1   | mirror:ME         | Me, me, me                               | @20.0
+post1   | queenrow:REEL IT  | Lyric, lyric, reel it in                 | @22.0
+bridge  | deepsea           | Falling deeper in the sound              | @24.0
+bridge  | custom-burst      | Here comes the drop                      | @26.0
+outro   | title             | Now make your own                        | @28.0

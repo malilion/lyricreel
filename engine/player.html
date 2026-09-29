@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lyricreel player</title>
+<style>
+@font-face{font-family:Bagel;src:url(fonts/BagelFatOne-Regular.ttf)}
+@font-face{font-family:Grotesk;src:url(fonts/SpaceGrotesk.ttf);font-weight:300 700}
+@font-face{font-family:Caveat;src:url(fonts/Caveat.ttf);font-weight:400 700}
+html,body{margin:0;background:#1b0a24;height:100%}
+body{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;font:14px Grotesk,system-ui,sans-serif;color:#fff3e3}
+canvas{width:min(100vw,177.78vh);height:auto;max-height:calc(100vh - 60px);display:block}
+#ui{display:none;gap:10px;align-items:center;padding:0 16px}
+body.preview #ui{display:flex}
+button{font:inherit;padding:6px 14px;border-radius:999px;border:0;background:#ff4fa3;color:#1b0a24;font-weight:700;cursor:pointer}
+input[type=range]{width:min(60vw,900px)}
+#err{color:#ff9a3c;white-space:pre-wrap;max-width:900px}
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="ui"><button id="play">▶ Play</button><input id="seek" type="range" min="0" max="1" step="0.01" value="0"><span id="tc">0.00</span></div>
+<div id="err"></div>
+<script>
+// 用法：player.html?project=<專案資料夾 URL>[&preview]
+//   render.js 以 file:// 絕對路徑開啟；`lyricreel preview` 以本機 HTTP 伺服器開啟
+const q = new URLSearchParams(location.search);
+const PROJ = (q.get('project') || '').replace(/\/$/, '');
+function load(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>rej(new Error('cannot load '+src));document.head.appendChild(el)})}
+window.lrReady = (async () => {
+  await load('core.js'); await load('props.js'); await load('scenes/manifest.js');
+  for (const f of window.LR_ENGINE_SCENES) await load('scenes/' + f);
+  await load('runtime.js');
+  if (PROJ) {
+    await load(PROJ + '/build/timeline.js');
+    for (const f of (window.LR_DATA.project.sceneFiles || [])) await load(PROJ + '/scenes/' + f);
+    window.lrUse(window.LR_DATA);
+  }
+  await document.fonts.load('96px Bagel'); await document.fonts.load('700 40px Grotesk'); await document.fonts.load('700 80px Caveat');
+  return true;
+})().catch(e => { document.getElementById('err').textContent = e.message; throw e; });
+
+if (q.has('preview')) {
+  document.body.classList.add('preview');
+  window.lrReady.then(() => {
+    const au = new Audio(PROJ + '/' + (LR_DATA.project.audio || 'song.mp3')), seek = document.getElementById('seek'), tc = document.getElementById('tc');
+    seek.max = AU.dur;
+    document.getElementById('play').onclick = () => au.paused ? au.play() : au.pause();
+    seek.oninput = () => { au.currentTime = +seek.value; if (au.paused) renderAt(au.currentTime); };
+    renderAt(+(q.get('t') || 0));
+    (function loop(){ if (!au.paused) { renderAt(au.currentTime); seek.value = au.currentTime; tc.textContent = au.currentTime.toFixed(2); } requestAnimationFrame(loop); })();
+  });
+}
+</script>
+</body>
+</html>

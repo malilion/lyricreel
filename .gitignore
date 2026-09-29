@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+venv/
+__pycache__/
+.DS_Store
+# 使用者的歌曲專案（通常含版權音訊與歌詞）：不要提交
+projects/
+# 產生物
+**/build/
+**/out/
+*.mp4
+*.wav
