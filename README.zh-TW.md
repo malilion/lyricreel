@@ -32,7 +32,7 @@ lyricreel 會把一個音訊檔和它的歌詞，做成 1080p、波普貼紙風�
 
 ## 需求
 
-- Node.js 18+、ffmpeg、Google Chrome 或 Chromium
+- Node.js 22.12+、ffmpeg、Google Chrome 或 Chromium
 - Python 3.10+，用於音訊分析與語音辨識（librosa、openai-whisper）
 
 ```bash

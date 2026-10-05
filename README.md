@@ -32,7 +32,7 @@ Full list with descriptions: [docs/SCENES.md](docs/SCENES.md). Regenerate it wit
 
 ## Requirements
 
-- Node.js 18+, ffmpeg, Google Chrome or Chromium
+- Node.js 22.12+, ffmpeg, Google Chrome or Chromium
 - Python 3.10+ for audio analysis and transcription (librosa, openai-whisper)
 
 ```bash
