@@ -74,8 +74,11 @@ function sceneList() {
 async function browser() {
   writeManifest();
   let puppeteer;
-  try { puppeteer = require('puppeteer-core'); } catch { die('run `npm install` first'); }
-  const b = await puppeteer.launch({ executablePath: chromePath(), headless: 'new',
+  // puppeteer-core 25 is ESM-only (Node >= 22.12)
+  try { puppeteer = (await import('puppeteer-core')).default; } catch (e) {
+    die(e.code === 'ERR_MODULE_NOT_FOUND' ? 'run `npm install` first' : `cannot load puppeteer-core (needs Node >= 22.12): ${e.message}`);
+  }
+  const b = await puppeteer.launch({ executablePath: chromePath(), headless: true,
     args: ['--allow-file-access-from-files', '--disable-web-security', '--force-device-scale-factor=1'] });
   const page = await b.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
