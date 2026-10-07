@@ -143,11 +143,21 @@ chorus1 | typo:HOOK      | The hook line (hook!)
     const pdir = projectDir(); requireTimeline(pdir); writeManifest();
     const port = +opt('--port', 8123);
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.json': 'application/json' };
+    // Resolve once so path checks cannot be bypassed by absolute URL segments or ".."
+    const engineRoot = path.resolve(ENGINE);
+    const projectRoot = path.resolve(pdir);
+    /** Normalize user path under a root; return null if it escapes (CodeQL js/path-injection). */
+    function resolveUnder(root, rel) {
+      if (rel == null || typeof rel !== 'string' || rel.includes('\0')) return null;
+      const resolved = path.resolve(root, rel);
+      if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
+      return resolved;
+    }
     http.createServer((req, res) => { try {
-      const u = decodeURIComponent(req.url.split('?')[0]);
-      const [base, rel] = u.startsWith('/project/') ? [pdir, u.slice(9)] : [ENGINE, u.slice(1) || 'player.html'];
-      const f = path.join(base, rel);
-      if (!(f + path.sep).startsWith(base + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
+      const u = decodeURIComponent((req.url || '/').split('?')[0]);
+      const [root, rel] = u.startsWith('/project/') ? [projectRoot, u.slice('/project/'.length)] : [engineRoot, u.slice(1) || 'player.html'];
+      const f = resolveUnder(root, rel);
+      if (!f || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
       const size = fs.statSync(f).size, range = req.headers.range, type = types[path.extname(f)] || 'application/octet-stream';
       const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
       if (m && (m[1] || m[2])) { // 讓瀏覽器可以拖曳音訊

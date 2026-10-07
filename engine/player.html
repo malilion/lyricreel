@@ -26,15 +26,81 @@ input[type=range]{width:min(60vw,900px)}
 // 用法：player.html?project=<專案資料夾 URL>[&preview]
 //   render.js 以 file:// 絕對路徑開啟；`lyricreel preview` 以本機 HTTP 伺服器開啟
 const q = new URLSearchParams(location.search);
-const PROJ = (q.get('project') || '').replace(/\/$/, '');
-function load(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>rej(new Error('cannot load '+src));document.head.appendChild(el)})}
+
+/** Sanitize ?project= — same-origin paths or file: only (blocks js/xss + unvalidated redirect). */
+function sanitizeProjectBase(raw) {
+  if (!raw) return '';
+  const trimmed = String(raw).replace(/\/$/, '');
+  try {
+    if (trimmed.startsWith('file:')) {
+      const u = new URL(trimmed);
+      if (u.protocol !== 'file:') return '';
+      // Reject path traversal in the file URL path
+      if (u.pathname.split('/').includes('..')) return '';
+      return u.href.replace(/\/$/, '');
+    }
+    // Protocol-relative or foreign absolute URLs → reject
+    if (trimmed.startsWith('//')) return '';
+    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+      const u = new URL(trimmed);
+      if (u.origin !== location.origin) return '';
+      return (u.pathname + u.search).replace(/\/$/, '');
+    }
+    // Relative / absolute path on this origin
+    const u = new URL(trimmed, location.href);
+    if (u.origin !== location.origin) return '';
+    return trimmed;
+  } catch {
+    return '';
+  }
+}
+
+/** Only load scripts from same origin (or file: when the page itself is file:). */
+function allowedScriptUrl(src) {
+  try {
+    const u = new URL(src, location.href);
+    if (location.protocol === 'file:') {
+      return u.protocol === 'file:' ? u.href : null;
+    }
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && u.origin === location.origin) {
+      return u.href;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+const PROJ = sanitizeProjectBase(q.get('project') || '');
+
+function load(src) {
+  return new Promise((res, rej) => {
+    const safe = allowedScriptUrl(src);
+    if (!safe) return rej(new Error('blocked script url'));
+    const el = document.createElement('script');
+    el.src = safe;
+    el.onload = res;
+    el.onerror = () => rej(new Error('cannot load ' + safe));
+    document.head.appendChild(el);
+  });
+}
+
+/** Scene filenames from project data must be simple basenames. */
+function safeSceneFile(f) {
+  return typeof f === 'string' && /^[A-Za-z0-9_.-]+\.js$/.test(f) ? f : null;
+}
+
 window.lrReady = (async () => {
   await load('core.js'); await load('props.js'); await load('scenes/manifest.js');
   for (const f of window.LR_ENGINE_SCENES) await load('scenes/' + f);
   await load('runtime.js');
   if (PROJ) {
     await load(PROJ + '/build/timeline.js');
-    for (const f of (window.LR_DATA.project.sceneFiles || [])) await load(PROJ + '/scenes/' + f);
+    for (const f of (window.LR_DATA.project.sceneFiles || [])) {
+      const name = safeSceneFile(f);
+      if (!name) continue;
+      await load(PROJ + '/scenes/' + name);
+    }
     window.lrUse(window.LR_DATA);
   }
   await document.fonts.load('96px Bagel'); await document.fonts.load('700 40px Grotesk'); await document.fonts.load('700 80px Caveat');
@@ -44,7 +110,12 @@ window.lrReady = (async () => {
 if (q.has('preview')) {
   document.body.classList.add('preview');
   window.lrReady.then(() => {
-    const au = new Audio(PROJ + '/' + (LR_DATA.project.audio || 'song.mp3')), seek = document.getElementById('seek'), tc = document.getElementById('tc');
+    const rawAudio = (typeof LR_DATA !== 'undefined' && LR_DATA.project && LR_DATA.project.audio) ? LR_DATA.project.audio : 'song.mp3';
+    const audioName = (typeof rawAudio === 'string' && /^[A-Za-z0-9_.-]+$/.test(rawAudio)) ? rawAudio : 'song.mp3';
+    // Same-origin / file: only — never fall back to an unsanitized URL
+    const audioSrc = allowedScriptUrl(PROJ + '/' + audioName);
+    if (!audioSrc) { document.getElementById('err').textContent = 'blocked audio url'; return; }
+    const au = new Audio(audioSrc), seek = document.getElementById('seek'), tc = document.getElementById('tc');
     seek.max = AU.dur;
     document.getElementById('play').onclick = () => au.paused ? au.play() : au.pause();
     seek.oninput = () => { au.currentTime = +seek.value; if (au.paused) renderAt(au.currentTime); };
@@ -52,6 +123,7 @@ if (q.has('preview')) {
     (function loop(){ if (!au.paused) { renderAt(au.currentTime); seek.value = au.currentTime; tc.textContent = au.currentTime.toFixed(2); } requestAnimationFrame(loop); })();
   });
 }
+
 </script>
 </body>
 </html>
