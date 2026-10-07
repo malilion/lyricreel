@@ -143,21 +143,24 @@ chorus1 | typo:HOOK      | The hook line (hook!)
     const pdir = projectDir(); requireTimeline(pdir); writeManifest();
     const port = +opt('--port', 8123);
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.json': 'application/json' };
-    // Resolve once so path checks cannot be bypassed by absolute URL segments or ".."
-    const engineRoot = path.resolve(ENGINE);
-    const projectRoot = path.resolve(pdir);
-    /** Normalize user path under a root; return null if it escapes (CodeQL js/path-injection). */
-    function resolveUnder(root, rel) {
-      if (rel == null || typeof rel !== 'string' || rel.includes('\0')) return null;
-      const resolved = path.resolve(root, rel);
-      if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
-      return resolved;
-    }
+    // Fixed roots for containment checks (CodeQL js/path-injection)
+    const engineRoot = path.resolve(ENGINE) + path.sep;
+    const projectRoot = path.resolve(pdir) + path.sep;
+    // Relative URL path only: no absolute, no "..", no null bytes
+    // Each segment must contain a non-dot char so lone '.' / '..' cannot match
+    const SAFE_REL = /^(?:[A-Za-z0-9_][A-Za-z0-9_.-]*|[A-Za-z0-9_.-]*[A-Za-z0-9_][A-Za-z0-9_.-]*)(?:\/(?:[A-Za-z0-9_][A-Za-z0-9_.-]*|[A-Za-z0-9_.-]*[A-Za-z0-9_][A-Za-z0-9_.-]*))*$/;
     http.createServer((req, res) => { try {
       const u = decodeURIComponent((req.url || '/').split('?')[0]);
-      const [root, rel] = u.startsWith('/project/') ? [projectRoot, u.slice('/project/'.length)] : [engineRoot, u.slice(1) || 'player.html'];
-      const f = resolveUnder(root, rel);
-      if (!f || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
+      const underProject = u.startsWith('/project/');
+      const rootWithSep = underProject ? projectRoot : engineRoot;
+      const rel = underProject ? u.slice('/project/'.length) : (u.slice(1) || 'player.html');
+      if (typeof rel !== 'string' || rel.includes('\0') || !SAFE_REL.test(rel)) {
+        res.writeHead(404); return res.end('not found');
+      }
+      // GOOD: resolve then require the result stays under the chosen root
+      const f = path.resolve(rootWithSep, rel);
+      if (!f.startsWith(rootWithSep)) { res.writeHead(404); return res.end('not found'); }
+      if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
       const size = fs.statSync(f).size, range = req.headers.range, type = types[path.extname(f)] || 'application/octet-stream';
       const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
       if (m && (m[1] || m[2])) { // 讓瀏覽器可以拖曳音訊
