@@ -146,15 +146,21 @@ chorus1 | typo:HOOK      | The hook line (hook!)
     // Fixed roots for containment checks (CodeQL js/path-injection)
     const engineRoot = path.resolve(ENGINE) + path.sep;
     const projectRoot = path.resolve(pdir) + path.sep;
-    // Relative URL path only: no absolute, no "..", no null bytes
-    // Each segment must contain a non-dot char so lone '.' / '..' cannot match
-    const SAFE_REL = /^(?:[A-Za-z0-9_][A-Za-z0-9_.-]*|[A-Za-z0-9_.-]*[A-Za-z0-9_][A-Za-z0-9_.-]*)(?:\/(?:[A-Za-z0-9_][A-Za-z0-9_.-]*|[A-Za-z0-9_.-]*[A-Za-z0-9_][A-Za-z0-9_.-]*))*$/;
+    /** Relative URL path only: no absolute, no "."/".." segments, no null bytes (avoids ReDoS). */
+    function isSafeRelPath(rel) {
+      if (typeof rel !== 'string' || !rel || rel.includes('\0') || path.isAbsolute(rel)) return false;
+      for (const part of rel.split('/')) {
+        if (!part || part === '.' || part === '..') return false;
+        if (!/^[A-Za-z0-9_.-]+$/.test(part)) return false;
+      }
+      return true;
+    }
     http.createServer((req, res) => { try {
       const u = decodeURIComponent((req.url || '/').split('?')[0]);
       const underProject = u.startsWith('/project/');
       const rootWithSep = underProject ? projectRoot : engineRoot;
       const rel = underProject ? u.slice('/project/'.length) : (u.slice(1) || 'player.html');
-      if (typeof rel !== 'string' || rel.includes('\0') || !SAFE_REL.test(rel)) {
+      if (!isSafeRelPath(rel)) {
         res.writeHead(404); return res.end('not found');
       }
       // GOOD: resolve then require the result stays under the chosen root
