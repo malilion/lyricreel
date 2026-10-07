@@ -143,11 +143,30 @@ chorus1 | typo:HOOK      | The hook line (hook!)
     const pdir = projectDir(); requireTimeline(pdir); writeManifest();
     const port = +opt('--port', 8123);
     const types = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4', '.json': 'application/json' };
+    // Fixed roots for containment checks (CodeQL js/path-injection)
+    const engineRoot = path.resolve(ENGINE) + path.sep;
+    const projectRoot = path.resolve(pdir) + path.sep;
+    /** Relative URL path only: no absolute, no "."/".." segments, no null bytes (avoids ReDoS). */
+    function isSafeRelPath(rel) {
+      if (typeof rel !== 'string' || !rel || rel.includes('\0') || path.isAbsolute(rel)) return false;
+      for (const part of rel.split('/')) {
+        if (!part || part === '.' || part === '..') return false;
+        if (!/^[A-Za-z0-9_.-]+$/.test(part)) return false;
+      }
+      return true;
+    }
     http.createServer((req, res) => { try {
-      const u = decodeURIComponent(req.url.split('?')[0]);
-      const [base, rel] = u.startsWith('/project/') ? [pdir, u.slice(9)] : [ENGINE, u.slice(1) || 'player.html'];
-      const f = path.join(base, rel);
-      if (!(f + path.sep).startsWith(base + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
+      const u = decodeURIComponent((req.url || '/').split('?')[0]);
+      const underProject = u.startsWith('/project/');
+      const rootWithSep = underProject ? projectRoot : engineRoot;
+      const rel = underProject ? u.slice('/project/'.length) : (u.slice(1) || 'player.html');
+      if (!isSafeRelPath(rel)) {
+        res.writeHead(404); return res.end('not found');
+      }
+      // GOOD: resolve then require the result stays under the chosen root
+      const f = path.resolve(rootWithSep, rel);
+      if (!f.startsWith(rootWithSep)) { res.writeHead(404); return res.end('not found'); }
+      if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('not found'); }
       const size = fs.statSync(f).size, range = req.headers.range, type = types[path.extname(f)] || 'application/octet-stream';
       const m = range && /^bytes=(\d*)-(\d*)$/.exec(range.trim());
       if (m && (m[1] || m[2])) { // 讓瀏覽器可以拖曳音訊
