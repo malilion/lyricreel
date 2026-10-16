@@ -156,4 +156,4 @@ engine/player.html + scenes + timeline.js ─► headless Chrome renderAt(t) ─
 
 ## License
 
-Code: [MIT](LICENSE). Fonts in `engine/fonts/` (Bagel Fat One, Space Grotesk, Caveat) are under the [SIL Open Font License](engine/fonts/).
+Code: [MIT](LICENSE). Fonts in `engine/fonts/` (Bagel Fat One, Space Grotesk, Caveat) are under the [SIL Open Font License](engine/fonts/). Original assets: [CC BY-NC 4.0](ASSETS_LICENSE.md); the demo `song.mp3` is all rights reserved pending source confirmation.
