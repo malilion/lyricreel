@@ -156,4 +156,4 @@ engine/player.html + 場景 + timeline.js ─► headless Chrome renderAt(t) ─
 
 ## 授權
 
-程式碼：[MIT](LICENSE)。`engine/fonts/` 裡的字型（Bagel Fat One、Space Grotesk、Caveat）採用 [SIL Open Font License](engine/fonts/)。
+程式碼：[MIT](LICENSE)。`engine/fonts/` 裡的字型（Bagel Fat One、Space Grotesk、Caveat）採用 [SIL Open Font License](engine/fonts/)。原創素材採 [CC BY-NC 4.0](ASSETS_LICENSE.md)；示範曲 `song.mp3` 來源待確認，暫保留所有權利。
